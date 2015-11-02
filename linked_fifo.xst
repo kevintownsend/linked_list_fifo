@@ -1,0 +1,1 @@
+run -ifn linked_fifo.prj -ifmt mixed -top linked_fifo -ofn std_fifo.ngc -ofmt NGC -p xc5vlx330-2 -opt_mode Speed -opt_level 1
