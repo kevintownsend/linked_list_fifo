@@ -1,4 +1,4 @@
-module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count, almost_full);
+module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count, almost_full, free_count);
     parameter WIDTH = 8;
     parameter DEPTH = 32;
     parameter FIFOS = 8;
@@ -13,15 +13,14 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     input [LOG2_FIFOS-1:0] pop_fifo;
     input [WIDTH-1:0] d;
     output [WIDTH-1:0] q;
-    //output [2**FIFOS-1:0] empty;
     output empty;
     output full;
     output [(LOG2_DEPTH+1)*(2**FIFOS)-1:0] count;
     output reg almost_full;
+    output reg [LOG2_DEPTH:0] free_count;
 
-    //stores actual data not links
+
     reg [WIDTH-1:0] ram [DEPTH - 1:0];
-    //ram to store links
     reg [LOG2_DEPTH:0] linked_ram [DEPTH - 1:0];
     reg ram_we;
     reg [LOG2_DEPTH-1:0] ram_addr_a, ram_addr_b;
@@ -36,18 +35,14 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     reg c_empty;
     reg [LOG2_FIFOS-1:0] beg_ptr, end_ptr;
     reg [LOG2_DEPTH:0] free, next_free;
-    reg [LOG2_DEPTH:0] free_count;
     reg beg_we, end_we;
-    //TODO: clarify 
-    //reg [DEPTH:0] r_free_end, c_free_end;
-    //reg [DEPTH:0] r_free_beg, c_free_beg;
     integer i, j, k;
     reg [LOG2_DEPTH:0] rst_counter, next_rst_counter;
     reg [1:0] state, next_state;
     `define RST1 0
     `define RST2 1
     `define STEADY 2
-    
+
     always @(posedge clk) begin
         if(state != `STEADY) begin
             free_count <= DEPTH-FIFOS;
@@ -73,7 +68,7 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     assign q = ram_q;
     always @*
         ram_d = d;
-    
+
     always @(posedge clk) begin
         if(ram_we) begin
             linked_ram[ram_addr_a] <= linked_ram_d;
@@ -83,7 +78,6 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
         linked_ram_q = linked_ram[ram_addr_b];
 
 
-    //TODO: add write enable
     always @(posedge clk) begin
         if(beg_we)
             r_beg[beg_ptr] <= beg_next;
@@ -115,11 +109,6 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     always @(posedge clk)
         rst_counter <= next_rst_counter;
 
-/*    always @(posedge clk) begin
-        r_free_end <= c_free_end;
-        r_free_beg <= c_free_beg;
-    end
-*/
     always @* begin
         if(rst)
             next_state = `RST1;
@@ -136,7 +125,6 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     end
 
     always @* begin
-        //Defaults:
         ram_we = 0;
         beg_next = 0;
         beg_we = 0;
@@ -179,12 +167,11 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
                 ram_we = 1;
                 end_we = 1;
                 ram_addr_a = end_curr;
-                linked_ram_d = free; 
+                linked_ram_d = free;
                 end_ptr = push_fifo;
                 end_next = free;
                 ram_addr_b = free;
                 next_free = linked_ram_q;
-    
             end else if(pop) begin
                 beg_we = 1;
                 beg_next = linked_ram_q;
@@ -198,116 +185,6 @@ module linked_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, 
     end
 
     assign full = free[LOG2_DEPTH];
-
-    //debug
-    //synthesis off
-    /*
-    //TODO: print last 8 clock cycles.
-    integer prev_buffer_ptr;
-    initial prev_buffer_ptr = 0;
-    reg [WIDTH-1:0]prev_linked_ram[0:7][0:DEPTH-1];
-    reg [LOG2_DEPTH:0] prev_r_beg[0:7][0:FIFOS-1];
-    reg [LOG2_DEPTH:0] prev_r_end[0:7][0:FIFOS-1];
-    reg [0:7] prev_pop;
-    reg [0:7] prev_push;
-    reg [LOG2_DEPTH:0] prev_free[0:7];
-    always @(posedge clk) begin
-        for(i = 0; i < DEPTH; i = i + 1)
-            prev_linked_ram[prev_buffer_ptr][i] <= linked_ram[i];
-        for(i = 0; i < FIFOS; i = i + 1) begin
-            prev_r_beg[prev_buffer_ptr][i] <= r_beg[i];
-            prev_r_end[prev_buffer_ptr][i] <= r_end[i];
-        end
-        prev_pop[prev_buffer_ptr] <= pop;
-        prev_push[prev_buffer_ptr] <= push;
-        prev_free[prev_buffer_ptr] <= free;
-        prev_buffer_ptr <= (prev_buffer_ptr + 1) % 8;
-    end
-    task print_linked_info;
-    begin
-        for(j = 0; j < 8; j = j + 1) begin
-            k = (prev_buffer_ptr + j) % 8;
-            $display("%d clock cycles ago:", 8-j);
-            $display("push: %b, pop: %b", prev_push[k], prev_pop[k]);
-            $display("linked_ram:");
-            for(i = 0; i < DEPTH; i = i + 1)
-                $display("%d : %d", i, prev_linked_ram[k][i]);
-            $display("r_beg:");
-            for(i = 0; i < FIFOS; i = i + 1)
-                $display("%d : %d", i, prev_r_beg[k][i]);
-            $display("r_end:");
-            for(i = 0; i < FIFOS; i = i + 1)
-                $display("%d : %d", i, prev_r_end[k][i]);
-            $display("free: %d", prev_free[k]);
-        end
-        $display("linked_ram:");
-        for(i = 0; i < DEPTH; i = i + 1)
-            $display("%d : %d", i, linked_ram[i]);
-        $display("r_beg:");
-        for(i = 0; i < FIFOS; i = i + 1)
-            $display("%d : %d", i, r_beg[i]);
-        $display("r_end:");
-        for(i = 0; i < FIFOS; i = i + 1)
-            $display("%d : %d", i, r_end[i]);
-    end
-    endtask
-    reg [1:0] prev_state;
-    integer debug_free_count, free_trace, timeout;
-    integer trace, count, total_count;
-    integer error = 0;
-    always @(posedge clk) begin
-        if(full && push) begin
-            $display("%m ERROR: OVERFLOW");
-            $finish;
-        end
-        prev_state <= state;
-        if(prev_state != state) begin
-            if(state == `RST2) begin
-                $display("In RST2 state");
-            end else if(state == `STEADY) begin
-                $display("In steady state");
-            end
-        end
-        total_count = 0;
-        debug_free_count = 0;
-        free_trace = free;
-        timeout = DEPTH;
-        if(state == `STEADY) begin
-            while(timeout != 0 && !free_trace[LOG2_DEPTH]) begin
-                timeout = timeout - 1;
-                debug_free_count = debug_free_count + 1;
-                free_trace = linked_ram[free_trace];
-            end
-            if(debug_free_count != free_count) begin
-                $display("free count mismatch %m");
-                $display("debug: %d", debug_free_count);
-                $display("free: %d", free_count);
-                $finish;
-            end
-            total_count = debug_free_count + total_count;
-            //$display("@linked_fifo: free count: %d", debug_free_count);
-            for(i = 0; i < FIFOS; i = i + 1) begin
-                count = 0;
-                trace = r_beg[i];
-                timeout = DEPTH;
-                while(timeout != 0 && trace != r_end[i]) begin
-                    trace = linked_ram[trace];
-                    count = count + 1;
-                    timeout = timeout - 1;
-                end
-                total_count = total_count + count;
-                //$display("@linked_fifo: count: %d", count);
-            end
-            if(total_count != DEPTH-FIFOS) begin
-                $display("%d: @linked_fifo: %m ERROR: total_count: %d", $time, total_count);
-                //print_linked_info();
-                $finish;
-                error = 1;
-            end
-        end
-    end
-    */
-    //sythesis on
     `include "log2.vh"
 
 endmodule
