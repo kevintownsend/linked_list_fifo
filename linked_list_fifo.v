@@ -23,6 +23,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
 
     reg [WIDTH-1:0] ram [DEPTH - 1:0];
     reg [LOG2_DEPTH:0] linked_ram [DEPTH - 1:0];
+
     reg ram_we;
     reg [LOG2_DEPTH-1:0] ram_addr_a, ram_addr_b;
     reg [WIDTH-1:0] ram_d, ram_q;
@@ -43,6 +44,14 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     `define RST2 1
     `define STEADY 2
 
+    initial for(i = 0; i < DEPTH; i = i + 1) begin
+        linked_ram[i] = i + 1;
+    end
+    initial for(i = 0; i < FIFOS; i = i + 1) begin
+        r_beg[i] = i;
+        r_end[i] = i;
+    end
+    initial free = FIFOS;
     initial free_count = DEPTH - FIFOS;
     always @(posedge clk) begin
         if(state != `STEADY) begin
@@ -116,6 +125,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
             next_state = `STEADY;
         else
             next_state = state;
+        //next_state = `STEADY;
     end
     always @(posedge clk) begin
         state <= next_state;

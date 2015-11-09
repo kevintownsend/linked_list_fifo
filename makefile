@@ -18,3 +18,9 @@ work:
 
 sim: work $(vsim_linked_list_fifo) $(vsim_linked_list_fifo_tb) $(vsim_linked_list_fifo_gold)
 	echo -e "vsim work.linked_list_fifo_tb\nrun -all" | vsim
+
+xst:
+	xst -ifn linked_list_fifo.xst
+
+clean:
+	rm -rf xst work
