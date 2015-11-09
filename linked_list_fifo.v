@@ -15,7 +15,8 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     output [WIDTH-1:0] q;
     output empty;
     output full;
-    output [(LOG2_DEPTH+1)*(2**FIFOS)-1:0] count;
+    //output [(LOG2_DEPTH+1)*(2**FIFOS)-1:0] count;
+    output [(LOG2_DEPTH)*(FIFOS)-1:0] count;
     output reg almost_full;
     output reg [LOG2_DEPTH:0] free_count;
 
@@ -42,6 +43,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     `define RST2 1
     `define STEADY 2
 
+    initial free_count = DEPTH - FIFOS;
     always @(posedge clk) begin
         if(state != `STEADY) begin
             free_count <= DEPTH-FIFOS;
@@ -179,6 +181,8 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
             end
         end
     end
+    integer error;
+    initial error = 0;
 
     assign full = free[LOG2_DEPTH];
     `include "log2.vh"

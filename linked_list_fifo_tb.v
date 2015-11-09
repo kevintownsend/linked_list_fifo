@@ -1,15 +1,15 @@
 `timescale 1ns/1ps
-//TODO: create gold model
-module linked_fifo_tb;
-    `define WIDTH 8
-    `define DEPTH 32
-    `define FIFOS 8
-    `define LOG2_FIFO log2(`FIFOS-1)
+module linked_list_fifo_tb;
+    localparam WIDTH = 8;
+    localparam DEPTH = 32;
+    localparam FIFOS = 8;
+    localparam LOG2_FIFO = log2(FIFOS-1);
+    localparam LOG2_DEPTH = log2(DEPTH - 1);
     reg rst, clk;
     reg push;
-    reg [2:0] push_fifo;
+    reg [LOG2_FIFO - 1:0] push_fifo;
     reg pop;
-    reg [2:0] pop_fifo;
+    reg [LOG2_FIFO - 1:0] pop_fifo;
     reg [7:0] d;
     wire [7:0] q;
     wire empty;
@@ -20,10 +20,12 @@ module linked_fifo_tb;
     wire full_gold;
     wire [3*8-1:0] count_gold;
     wire almost_full;
+    wire [LOG2_DEPTH:0] free_count;
+
     //TODO: add free
 
-    linked_fifo #(`WIDTH, `DEPTH, `FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full,,almost_full);
-    linked_fifo_gold #(`WIDTH, `DEPTH, `FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
+    linked_list_fifo #(WIDTH, DEPTH, FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full,,almost_full, free_count);
+    linked_list_fifo_gold #(WIDTH, DEPTH, FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
 
     always @(posedge clk) begin
         //if(almost_full)
@@ -166,4 +168,5 @@ module linked_fifo_tb;
             //$display("GOLD: %d ACTUAL: %d", q_gold, q);
         end
     end
+    `include "common.vh"
 endmodule
