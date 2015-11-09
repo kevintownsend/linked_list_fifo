@@ -1,15 +1,15 @@
 `timescale 1ns/1ps
 module linked_list_fifo_tb;
-    `define WIDTH 8
-    `define DEPTH 32
-    `define FIFOS 8
-    `define LOG2_FIFO log2(`FIFOS-1)
-    localparam LOG2_DEPTH = log2(`DEPTH - 1);
+    localparam WIDTH = 8;
+    localparam DEPTH = 32;
+    localparam FIFOS = 8;
+    localparam LOG2_FIFO = log2(FIFOS-1);
+    localparam LOG2_DEPTH = log2(DEPTH - 1);
     reg rst, clk;
     reg push;
-    reg [2:0] push_fifo;
+    reg [LOG2_FIFO - 1:0] push_fifo;
     reg pop;
-    reg [2:0] pop_fifo;
+    reg [LOG2_FIFO - 1:0] pop_fifo;
     reg [7:0] d;
     wire [7:0] q;
     wire empty;
@@ -24,8 +24,8 @@ module linked_list_fifo_tb;
 
     //TODO: add free
 
-    linked_list_fifo #(`WIDTH, `DEPTH, `FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full,,almost_full, free_count);
-    linked_list_fifo_gold #(`WIDTH, `DEPTH, `FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
+    linked_list_fifo #(WIDTH, DEPTH, FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full,,almost_full, free_count);
+    linked_list_fifo_gold #(WIDTH, DEPTH, FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
 
     always @(posedge clk) begin
         //if(almost_full)

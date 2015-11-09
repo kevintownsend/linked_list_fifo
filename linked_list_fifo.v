@@ -44,6 +44,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     `define RST2 1
     `define STEADY 2
 
+    initial free_count = DEPTH - FIFOS;
     always @(posedge clk) begin
         if(state != `STEADY) begin
             free_count <= DEPTH-FIFOS;
