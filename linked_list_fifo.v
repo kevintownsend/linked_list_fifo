@@ -25,13 +25,12 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     reg ram_we;
     reg [LOG2_DEPTH-1:0] ram_addr_a, ram_addr_b;
     reg [WIDTH-1:0] ram_d, ram_q;
-    reg [LOG2_DEPTH:0] linked_ram_d, linked_ram_q;
+    reg [LOG2_DEPTH:0] linked_ram_d;
 
     reg [WIDTH-1:0] r_q;
     reg [LOG2_DEPTH-1:0] r_beg [FIFOS-1:0];
     reg [LOG2_DEPTH-1:0] r_end [FIFOS-1:0];
-    reg [LOG2_DEPTH-1:0] beg_next, beg_curr, end_next, end_curr;
-    reg [LOG2_DEPTH-1:0] empty_check;
+    reg [LOG2_DEPTH-1:0] beg_next, end_next;
     reg c_empty;
     reg [LOG2_FIFOS-1:0] beg_ptr, end_ptr;
     reg [LOG2_DEPTH:0] free, next_free;
@@ -74,8 +73,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
             linked_ram[ram_addr_a] <= linked_ram_d;
         end
     end
-    always @*
-        linked_ram_q = linked_ram[ram_addr_b];
+    wire [LOG2_DEPTH:0] linked_ram_q = linked_ram[ram_addr_b];
 
 
     always @(posedge clk) begin
@@ -85,11 +83,9 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
             r_end[end_ptr] <= end_next;
     end
 
-    always @* begin
-        beg_curr = r_beg[beg_ptr];
-        end_curr = r_end[end_ptr];
-        empty_check = r_end[beg_ptr];
-    end
+    wire [LOG2_DEPTH-1:0] beg_curr = r_beg[beg_ptr];
+    wire [LOG2_DEPTH-1:0] end_curr = r_end[end_ptr];
+    wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
     always @* begin
         if(empty_check == beg_curr)
             c_empty = 1;
