@@ -1,4 +1,4 @@
-module linked_fifo_gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count);
+module linked_list_fifo_gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count);
     parameter WIDTH = 8;
     parameter DEPTH = 32;
     parameter FIFOS = 8;
