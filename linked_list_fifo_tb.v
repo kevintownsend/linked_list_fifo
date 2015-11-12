@@ -24,7 +24,7 @@ module linked_list_fifo_tb;
 
     //TODO: add free
 
-    linked_list_fifo #(WIDTH, DEPTH, FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count,almost_full, free_count);
+    linked_list_fifo #(WIDTH, DEPTH, FIFOS, 1) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count,almost_full, free_count);
     linked_list_fifo_gold #(WIDTH, DEPTH, FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
 
     always @(posedge clk) begin

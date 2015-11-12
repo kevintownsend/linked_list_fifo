@@ -2,6 +2,7 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     parameter WIDTH = 8;
     parameter DEPTH = 32;
     parameter FIFOS = 8;
+    parameter GEN_COUNTERS = 1;
     parameter LOG2_FIFOS = log2(FIFOS-1);
     parameter LOG2_DEPTH = log2(DEPTH-1);
     parameter FIFO_COUNT = FIFOS;
@@ -25,22 +26,26 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
 
     reg [LOG2_DEPTH - 1:0] count_internal [0:FIFOS - 1];
     genvar g;
-    generate for(g = 0; g < FIFOS; g = g + 1) begin: assign_count
-        assign count[(g+1)*LOG2_DEPTH - 1 -:LOG2_DEPTH] = count_internal[g];
-    end endgenerate
     integer i;
-    initial for(i = 0; i < FIFOS; i = i + 1)
-        count_internal[i] = 0;
-
-    always @(posedge clk) begin
-        if(pop_internal && push_internal && push_fifo == pop_fifo) begin
-        end else begin
-            if(pop_internal)
-                count_internal[pop_fifo] = count_internal[pop_fifo] - 1;
-            if(push_internal)
-                count_internal[push_fifo] = count_internal[push_fifo] + 1;
+    generate if(GEN_COUNTERS) begin: assign_count0
+        for(g = 0; g < FIFOS; g = g + 1) begin: assign_count
+            assign count[(g+1)*LOG2_DEPTH - 1 -:LOG2_DEPTH] = count_internal[g];
         end
-    end
+        initial for(i = 0; i < FIFOS; i = i + 1)
+            count_internal[i] = 0;
+
+        always @(posedge clk) begin
+            if(pop_internal && push_internal && push_fifo == pop_fifo) begin
+            end else begin
+                if(pop_internal)
+                    count_internal[pop_fifo] = count_internal[pop_fifo] - 1;
+                if(push_internal)
+                    count_internal[push_fifo] = count_internal[push_fifo] + 1;
+            end
+        end
+    end else begin
+        assign count = 0;
+    end endgenerate
 
 
     reg [WIDTH-1:0] ram [DEPTH - 1:0];
@@ -110,17 +115,19 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
 
     wire [LOG2_DEPTH-1:0] beg_curr = r_beg[beg_ptr];
     wire [LOG2_DEPTH-1:0] end_curr = r_end[end_ptr];
-    //wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
-    wire count_empty = count_internal[pop_fifo] == 0;
-        /*
-    always @* begin
-        if(empty_check == beg_curr)
-            c_empty = 1;
-        else
-            c_empty = 0;
-    end
-        */
-    assign empty = count_empty;
+    generate if(GEN_COUNTERS) begin: assign_empty
+        wire count_empty = count_internal[pop_fifo] == 0;
+        assign empty = count_empty;
+    end else begin
+        wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
+        always @* begin
+            if(empty_check == beg_curr)
+                c_empty = 1;
+            else
+                c_empty = 0;
+        end
+        assign empty = c_empty;
+    end endgenerate
 
     always @(posedge clk) begin
         free <= next_free;
