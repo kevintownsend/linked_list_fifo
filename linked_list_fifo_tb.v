@@ -14,7 +14,7 @@ module linked_list_fifo_tb;
     wire [7:0] q;
     wire empty;
     wire full;
-    wire [3*8-1:0] count;
+    wire [FIFOS * LOG2_DEPTH-1:0] count;
     wire [7:0] q_gold;
     wire empty_gold;
     wire full_gold;
@@ -24,7 +24,7 @@ module linked_list_fifo_tb;
 
     //TODO: add free
 
-    linked_list_fifo #(WIDTH, DEPTH, FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full,,almost_full, free_count);
+    linked_list_fifo #(WIDTH, DEPTH, FIFOS) dut(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count,almost_full, free_count);
     linked_list_fifo_gold #(WIDTH, DEPTH, FIFOS) gold(rst, clk, push, push_fifo, pop, pop_fifo, d, q_gold, empty_gold, full_gold,);
 
     always @(posedge clk) begin
@@ -82,6 +82,10 @@ module linked_list_fifo_tb;
             #10;
             timeout = timeout+1;
         end
+        $display("count: %B", count);
+        $display("count: %B", count[LOG2_DEPTH-1:0]);
+        $display("count: %B", count);
+
         $display("conituous push end");
         push <= 0;
         push_fifo <= 1;

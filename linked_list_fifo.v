@@ -20,6 +20,28 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     output reg almost_full;
     output reg [LOG2_DEPTH:0] free_count;
 
+    wire pop_internal = pop && !empty;
+    wire push_internal = push && !full;
+
+    reg [LOG2_DEPTH - 1:0] count_internal [0:FIFOS - 1];
+    genvar g;
+    generate for(g = 0; g < FIFOS; g = g + 1) begin: assign_count
+        assign count[(g+1)*LOG2_DEPTH - 1 -:LOG2_DEPTH] = count_internal[g];
+    end endgenerate
+    integer i;
+    initial for(i = 0; i < FIFOS; i = i + 1)
+        count_internal[i] = 0;
+
+    always @(posedge clk) begin
+        if(pop_internal && push_internal && push_fifo == pop_fifo) begin
+        end else begin
+            if(pop_internal)
+                count_internal[pop_fifo] = count_internal[pop_fifo] - 1;
+            if(push_internal)
+                count_internal[push_fifo] = count_internal[push_fifo] + 1;
+        end
+    end
+
 
     reg [WIDTH-1:0] ram [DEPTH - 1:0];
     reg [LOG2_DEPTH:0] linked_ram [DEPTH - 1:0];
@@ -37,12 +59,6 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     reg [LOG2_FIFOS-1:0] beg_ptr, end_ptr;
     reg [LOG2_DEPTH:0] free, next_free;
     reg beg_we, end_we;
-    integer i, j, k;
-    reg [LOG2_DEPTH:0] rst_counter, next_rst_counter;
-    reg [1:0] state, next_state;
-    `define RST1 0
-    `define RST2 1
-    `define STEADY 2
 
     initial for(i = 0; i < DEPTH; i = i + 1) begin
         linked_ram[i] = i + 1;
@@ -54,12 +70,10 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     initial free = FIFOS;
     initial free_count = DEPTH - FIFOS;
     always @(posedge clk) begin
-        if(state != `STEADY) begin
-            free_count <= DEPTH-FIFOS;
-        end else if(pop & push) begin
-        end else if(pop) begin
+        if(pop_internal & push_internal) begin
+        end else if(pop_internal) begin
             free_count <= free_count + 1;
-        end else if(push) begin
+        end else if(push_internal) begin
             free_count <= free_count - 1;
         end
     end
@@ -96,39 +110,19 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
 
     wire [LOG2_DEPTH-1:0] beg_curr = r_beg[beg_ptr];
     wire [LOG2_DEPTH-1:0] end_curr = r_end[end_ptr];
-    wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
+    //wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
+    wire count_empty = count_internal[pop_fifo] == 0;
+        /*
     always @* begin
         if(empty_check == beg_curr)
             c_empty = 1;
         else
             c_empty = 0;
     end
-    assign empty = c_empty;
+        */
+    assign empty = count_empty;
 
-    always @* begin
-        if(rst) begin
-            next_rst_counter = 0;
-        end else if(rst_counter[LOG2_DEPTH] != 1) begin
-            next_rst_counter = rst_counter + 1;
-        end else
-            next_rst_counter = DEPTH;
-    end
-    always @(posedge clk)
-        rst_counter <= next_rst_counter;
-
-    always @* begin
-        if(rst)
-            next_state = `RST1;
-        else if((state == `RST1) && (next_rst_counter == FIFOS))
-            next_state = `RST2;
-        else if(rst_counter[LOG2_DEPTH] == 1)
-            next_state = `STEADY;
-        else
-            next_state = state;
-        //next_state = `STEADY;
-    end
     always @(posedge clk) begin
-        state <= next_state;
         free <= next_free;
     end
 
@@ -144,51 +138,34 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
         ram_addr_a = end_curr;
         ram_addr_b = beg_curr;
         linked_ram_d = 0;
-        if(state == `RST1)begin
-            ram_we = 0;
+        if(push_internal && pop_internal) begin
+            ram_we = 1;
             beg_we = 1;
             end_we = 1;
-            beg_next = rst_counter;
-            end_next = rst_counter;
-            beg_ptr = rst_counter;
-            end_ptr = rst_counter;
-            next_free = FIFOS;
             ram_addr_a = end_curr;
+            linked_ram_d = beg_curr;
+            end_ptr = push_fifo;
+            beg_ptr = pop_fifo;
+            end_next = beg_curr;
+            beg_next = linked_ram_q;
             ram_addr_b = beg_curr;
-        end else if(state == `RST2) begin
+        end else if(push_internal) begin
             ram_we = 1;
-            linked_ram_d = next_rst_counter;
-            ram_addr_a = rst_counter;
-        end else if(state == `STEADY) begin
-            if(push && pop) begin
-                ram_we = 1;
-                beg_we = 1;
-                end_we = 1;
-                ram_addr_a = end_curr;
-                linked_ram_d = beg_curr;
-                end_ptr = push_fifo;
-                beg_ptr = pop_fifo;
-                end_next = beg_curr;
-                beg_next = linked_ram_q;
-                ram_addr_b = beg_curr;
-            end else if(push) begin
-                ram_we = 1;
-                end_we = 1;
-                ram_addr_a = end_curr;
-                linked_ram_d = free;
-                end_ptr = push_fifo;
-                end_next = free;
-                ram_addr_b = free;
-                next_free = linked_ram_q;
-            end else if(pop) begin
-                beg_we = 1;
-                beg_next = linked_ram_q;
-                ram_addr_b = beg_curr;
-                ram_addr_a = beg_curr;
-                next_free = beg_curr;
-                ram_we = 1;
-                linked_ram_d = free;
-            end
+            end_we = 1;
+            ram_addr_a = end_curr;
+            linked_ram_d = free;
+            end_ptr = push_fifo;
+            end_next = free;
+            ram_addr_b = free;
+            next_free = linked_ram_q;
+        end else if(pop_internal) begin
+            beg_we = 1;
+            beg_next = linked_ram_q;
+            ram_addr_b = beg_curr;
+            ram_addr_a = beg_curr;
+            next_free = beg_curr;
+            ram_we = 1;
+            linked_ram_d = free;
         end
     end
     integer error;
@@ -197,4 +174,10 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     assign full = free[LOG2_DEPTH];
     `include "log2.vh"
 
+    always @(posedge clk) begin
+        if(push && full) begin
+            $display("ERROR: Overflow at %m");
+            //$finish;
+        end
+    end
 endmodule
