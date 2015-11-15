@@ -1,8 +1,11 @@
-module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count, almost_full, free_count);
-    parameter WIDTH = 64;
-    parameter DEPTH = 2048;
-    parameter FIFOS = 4;
+module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count, almost_full, free_count, empty_check_fifo, empty_check2);
+    parameter WIDTH = 8;
+    parameter DEPTH = 32;
+    parameter FIFOS = 8;
     parameter GEN_COUNTERS = 1;
+    parameter GEN_EMPTY_CHECK = 1;
+    parameter GEN_OVERFLOW_PROTECTION = 0;
+    parameter GEN_UNDERFLOW_PROTECTION = 0;
     parameter LOG2_FIFOS = log2(FIFOS-1);
     parameter LOG2_DEPTH = log2(DEPTH-1);
     parameter FIFO_COUNT = FIFOS;
@@ -20,9 +23,22 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     output [(LOG2_DEPTH)*(FIFOS)-1:0] count;
     output reg almost_full;
     output reg [LOG2_DEPTH:0] free_count;
+    input [LOG2_FIFOS - 1:0] empty_check_fifo;
+    output empty_check2;
 
-    wire pop_internal = pop && !empty;
-    wire push_internal = push && !full;
+
+    wire pop_internal;
+    wire push_internal;
+    generate if(GEN_UNDERFLOW_PROTECTION) begin: gen_underflow_protection
+            assign pop_internal = pop && !empty;
+        end else begin
+            assign pop_internal = pop;
+    end endgenerate
+    generate if(GEN_OVERFLOW_PROTECTION) begin: gen_overflow_protection
+            assign push_internal = push && !full;
+        end else begin
+            assign push_internal = push;
+    end endgenerate
 
     reg [LOG2_DEPTH - 1:0] count_internal [0:FIFOS - 1];
     genvar g;
@@ -115,23 +131,23 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
 
     wire [LOG2_DEPTH-1:0] beg_curr = r_beg[beg_ptr];
     wire [LOG2_DEPTH-1:0] end_curr = r_end[end_ptr];
-    generate if(GEN_COUNTERS) begin: assign_empty
-        wire count_empty = count_internal[pop_fifo] == 0;
-        assign empty = count_empty;
-    end else begin
-        wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
-        always @* begin
-            if(empty_check == beg_curr)
-                c_empty = 1;
-            else
-                c_empty = 0;
-        end
-        assign empty = c_empty;
-    end endgenerate
+    wire [LOG2_DEPTH-1:0] empty_check = r_end[beg_ptr];
+    always @* begin
+        if(empty_check == beg_curr)
+            c_empty = 1;
+        else
+            c_empty = 0;
+    end
+    assign empty = c_empty;
 
     always @(posedge clk) begin
         free <= next_free;
     end
+    generate if(GEN_EMPTY_CHECK) begin: gen_empty_check
+        wire [LOG2_DEPTH-1:0] empty_check_2_beg = r_beg[empty_check_fifo];
+        wire [LOG2_DEPTH-1:0] empty_check_2_end = r_end[empty_check_fifo];
+        assign empty_check2 = empty_check_2_beg == empty_check_2_end;
+    end endgenerate
 
     always @* begin
         ram_we = 0;
