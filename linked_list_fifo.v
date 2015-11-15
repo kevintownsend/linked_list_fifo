@@ -4,8 +4,8 @@ module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, f
     parameter FIFOS = 8;
     parameter GEN_COUNTERS = 1;
     parameter GEN_EMPTY_CHECK = 1;
-    parameter GEN_OVERFLOW_PROTECTION = 0;
-    parameter GEN_UNDERFLOW_PROTECTION = 0;
+    parameter GEN_OVERFLOW_PROTECTION = 1;
+    parameter GEN_UNDERFLOW_PROTECTION = 1;
     parameter LOG2_FIFOS = log2(FIFOS-1);
     parameter LOG2_DEPTH = log2(DEPTH-1);
     parameter FIFO_COUNT = FIFOS;
