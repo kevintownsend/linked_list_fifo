@@ -1,7 +1,7 @@
 module linked_list_fifo(rst, clk, push, push_fifo, pop, pop_fifo, d, q, empty, full, count, almost_full, free_count);
-    parameter WIDTH = 8;
-    parameter DEPTH = 32;
-    parameter FIFOS = 8;
+    parameter WIDTH = 64;
+    parameter DEPTH = 2048;
+    parameter FIFOS = 4;
     parameter GEN_COUNTERS = 1;
     parameter LOG2_FIFOS = log2(FIFOS-1);
     parameter LOG2_DEPTH = log2(DEPTH-1);
